@@ -21,8 +21,6 @@ from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import httpx
-from a2ui.basic_catalog.provider import BasicCatalog
-from a2ui.schema.manager import A2uiSchemaManager
 from google import genai
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
@@ -33,6 +31,7 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 from google.cloud import firestore, storage
 from google.genai import types
 
+from .a2ui_prompt import A2UI_INSTRUCTION
 from .a2ui_utils import a2ui_callback
 
 MODEL = "gemini-3.7-flash"
@@ -511,55 +510,13 @@ async def generate_memories_callback(callback_context: CallbackContext):
     return None
 
 
-schema_manager = A2uiSchemaManager(
-    version="0.8",
-    catalogs=[BasicCatalog.get_config("0.8")],
-)
-
-a2ui_instruction = schema_manager.generate_system_prompt(
-    role_description=(
-        "You are the Travel & Itinerary Concierge Agent. "
-        "You help travelers explore destinations, learn about local highlights and costs, "
-        "and build customized travel itineraries. "
-        "You remember the user's travel preferences, budget styles, facts, and all places-to-go wishlists or bucket list destinations from previous conversations "
-        "and use them to personalize your recommendations. "
-        "Use your tools to query curated destinations (`list_destinations`, `get_destination_details`), "
-        "add new destinations if requested (`save_destination`), calculate personalized cost estimates "
-        "(`calculate_trip_budget`), look up real flight price trends (`fetch_flight_price_trends`), "
-        "geocode locations (`geocode_address`), find nearby attractions/restaurants (`search_nearby_places`), "
-        "generate visual destination inspiration images (`generate_destination_image`), "
-        "and save customized itineraries (`save_user_itinerary`)."
-    ),
-    workflow_description="Analyze the user request, call any appropriate tools to gather information, and return structured UI cards when presenting destinations, flight deals, places, images, or itineraries.",
-    ui_description=(
-        "Keep every surface tiny and flat: ONE Card > ONE Column > a few Text rows. "
-        "Never nest a Card inside a Card. "
-        "Use ONLY these components: Card, Column, Row, Text, and Image. Do not use "
-        "Table or Heading (unsupported), or Buttons, actions, or forms (they do "
-        "nothing in adk web). "
-        "You may include one Image component, but only when you have a public https "
-        "URL for the image (for example the URL an image tool returns after uploading "
-        "to a public bucket). Set the Image url to that exact https link, for example "
-        "{\"Image\": {\"url\": {\"literalString\": \"https://...\"}}}. Never point an "
-        "Image at a bare filename, an artifact name, or a non-http(s) path. If you do "
-        "not have a public URL, add a short Text line noting the image instead. "
-        "No markdown in text; use the usageHint property ('h1', 'h2', 'body') for "
-        "headings and emphasis. "
-        "Output ONLY the raw A2UI JSON array — no prose, and never wrap it in "
-        "<a2a_datapart_json> tags or 'kind'/'data'/'metadata' objects."
-    ),
-    include_schema=True,
-    include_examples=True,
-)
-
-
 root_agent = Agent(
     name="root_agent",
     model=Gemini(
         model=MODEL,
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    instruction=a2ui_instruction,
+    instruction=A2UI_INSTRUCTION,
     tools=[
         PreloadMemoryTool(),
         list_destinations,
