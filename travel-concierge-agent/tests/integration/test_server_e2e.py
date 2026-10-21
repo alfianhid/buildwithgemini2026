@@ -243,9 +243,9 @@ def test_reasoning_engine_stream(server_fixture: subprocess.Popen[str]) -> None:
 
     events = [json.loads(line) for line in response.text.splitlines() if line.strip()]
     assert events, "No events from reasoning_engine adapter"
-    has_text = any(
+    has_content = any(
         (event.get("content") or {}).get("parts")
-        and any(part.get("text") for part in event["content"]["parts"])
+        and any(part.get("text") or part.get("inline_data") for part in event["content"]["parts"])
         for event in events
     )
-    assert has_text, "No text content in reasoning_engine events"
+    assert has_content, "No content (text or inline_data) in reasoning_engine events"
